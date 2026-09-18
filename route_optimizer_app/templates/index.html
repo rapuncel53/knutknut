@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% if error_message %}
+<div class="alert alert-danger alert-dismissible fade show shadow-sm d-flex align-items-center" role="alert">
+    <i class="bi bi-exclamation-triangle-fill fs-4 me-3 text-danger"></i>
+    <div>
+        <strong>Input Error:</strong> {{ error_message }}
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+<!-- Control Card: Time Selection -->
+<div class="card border-0 shadow-sm rounded-4 mb-4 control-card">
+    <div class="card-body p-4">
+        <div class="row align-items-center gy-3">
+            <div class="col-lg-6">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="icon-circle bg-primary-subtle text-primary">
+                        <i class="bi bi-clock fs-3"></i>
+                    </div>
+                    <div>
+                        <h4 class="mb-1 fw-bold text-dark">Departure Time Planner</h4>
+                        <p class="text-muted mb-0 small">Choose departure time between <strong>07:00</strong> and <strong>17:00</strong> to compute the optimal route.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <form action="/" method="GET" class="row g-2 align-items-center justify-content-lg-end" id="timeForm">
+                    <div class="col-auto">
+                        <label for="hourSelect" class="form-label mb-0 text-muted small fw-semibold">Hour</label>
+                        <select name="hour" id="hourSelect" class="form-select form-select-lg fw-bold time-select" aria-label="Hour">
+                            {% for h in valid_hours %}
+                            <option value="{{ h }}" {% if h == current_hour %}selected{% endif %}>{{ h }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-auto">
+                        <span class="fs-4 fw-bold text-muted time-colon">:</span>
+                    </div>
+
+                    <div class="col-auto">
+                        <label for="minsInput" class="form-label mb-0 text-muted small fw-semibold">Minute</label>
+                        <input type="number" name="mins" id="minsInput" class="form-control form-control-lg fw-bold time-input" 
+                               min="0" max="59" value="{{ current_minute }}" required>
+                    </div>
+
+                    <div class="col-auto align-self-end">
+                        <button type="submit" id="optimizeBtn" class="btn btn-primary btn-lg fw-semibold px-4 shadow-sm btn-calculate">
+                            <i class="bi bi-lightning-charge-fill me-1" id="btnIcon"></i> <span id="btnText">Optimize</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Quick selection pills -->
+        <div class="mt-3 pt-3 border-top d-flex flex-wrap align-items-center gap-2">
+            <span class="text-muted small fw-medium me-1"><i class="bi bi-pin-angle-fill me-1"></i>Quick Departure Times:</span>
+            <a href="/?hour=07&mins=00" class="badge rounded-pill quick-pill {% if current_hour == '07' and current_minute == '00' %}active{% endif %}" data-hour="07" data-mins="00">07:00</a>
+            <a href="/?hour=07&mins=15" class="badge rounded-pill quick-pill {% if current_hour == '07' and current_minute == '15' %}active{% endif %}" data-hour="07" data-mins="15">07:15</a>
+            <a href="/?hour=08&mins=00" class="badge rounded-pill quick-pill {% if current_hour == '08' and current_minute == '00' %}active{% endif %}" data-hour="08" data-mins="00">08:00</a>
+            <a href="/?hour=09&mins=30" class="badge rounded-pill quick-pill {% if current_hour == '09' and current_minute == '30' %}active{% endif %}" data-hour="09" data-mins="30">09:30</a>
+            <a href="/?hour=10&mins=00" class="badge rounded-pill quick-pill {% if current_hour == '10' and current_minute == '00' %}active{% endif %}" data-hour="10" data-mins="00">10:00</a>
+            <a href="/?hour=12&mins=00" class="badge rounded-pill quick-pill {% if current_hour == '12' and current_minute == '00' %}active{% endif %}" data-hour="12" data-mins="00">12:00</a>
+            <a href="/?hour=13&mins=30" class="badge rounded-pill quick-pill {% if current_hour == '13' and current_minute == '30' %}active{% endif %}" data-hour="13" data-mins="30">13:30</a>
+            <a href="/?hour=15&mins=00" class="badge rounded-pill quick-pill {% if current_hour == '15' and current_minute == '00' %}active{% endif %}" data-hour="15" data-mins="00">15:00</a>
+            <a href="/?hour=16&mins=15" class="badge rounded-pill quick-pill {% if current_hour == '16' and current_minute == '15' %}active{% endif %}" data-hour="16" data-mins="15">16:15</a>
+            <a href="/?hour=17&mins=00" class="badge rounded-pill quick-pill {% if current_hour == '17' and current_minute == '00' %}active{% endif %}" data-hour="17" data-mins="00">17:00</a>
+            <span id="recalcNotice" class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill small ms-auto d-none">
+                <i class="bi bi-check2-circle me-1"></i> Calculation updated!
+            </span>
+        </div>
+    </div>
+</div>
+
+{% if evaluation %}
+<!-- Main Prediction Results -->
+<div class="row g-4 mb-4" id="resultsContainer">
+    <!-- Highlight: Recommended Best Route -->
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm rounded-4 h-100 best-route-card" id="bestRouteCard">
+            <div class="card-body p-4 d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle px-3 py-2 rounded-pill fs-6 fw-bold">
+                            <i class="bi bi-check-circle-fill me-1"></i> OPTIMAL ROUTE IDENTIFIED
+                        </span>
+                        <span class="text-muted small">
+                            Departure: <strong class="dep-time-display">{{ evaluation.departure_time }}</strong>
+                        </span>
+                    </div>
+
+                    <div class="d-flex align-items-baseline gap-3 mb-2">
+                        <h1 class="display-5 fw-extrabold text-success mb-0" id="bestRouteDisplay">{{ evaluation.best_route }}</h1>
+                        <span class="badge bg-light text-dark border px-2 py-1 fs-6">Fastest Option</span>
+                    </div>
+
+                    <p class="text-secondary mb-4">
+                        For departure at <strong class="dep-time-display">{{ evaluation.departure_time }}</strong>, traveling via route <strong id="bestRouteText">{{ evaluation.best_route }}</strong> minimizes transit delay.
+                    </p>
+                </div>
+
+                <div class="row g-3 py-3 px-2 rounded-3 bg-white border">
+                    <div class="col-sm-4 text-center border-end">
+                        <div class="text-muted small fw-semibold text-uppercase">Duration</div>
+                        <div class="fs-4 fw-bold text-dark mt-1" id="bestDurationFormattedDisplay">{{ evaluation.best_duration_formatted }}</div>
+                        <div class="text-success small fw-medium">Travel time</div>
+                    </div>
+                    <div class="col-sm-4 text-center border-end">
+                        <div class="text-muted small fw-semibold text-uppercase">Est. Arrival</div>
+                        <div class="fs-4 fw-bold text-dark mt-1" id="bestArrivalDisplay">{{ evaluation.best_arrival_time }}</div>
+                        <div class="text-muted small">Same day</div>
+                    </div>
+                    <div class="col-sm-4 text-center">
+                        <div class="text-muted small fw-semibold text-uppercase">Max Time Saved</div>
+                        <div class="fs-4 fw-bold text-primary mt-1">+<span id="maxTimeSavedDisplay">{{ evaluation.max_time_saved_formatted }}</span></div>
+                        <div class="text-primary small fw-medium">vs <span id="worstRouteDisplay">{{ evaluation.worst_route }}</span></div>
+                    </div>
+                </div>
+
+                <div class="mt-4 p-3 rounded-3 bg-success-subtle border border-success-subtle d-flex align-items-center gap-3">
+                    <i class="bi bi-shield-check text-success fs-3"></i>
+                    <div>
+                        <div class="fw-bold text-success-emphasis">Average Gain vs Historical Random Choice:</div>
+                        <div class="text-success small">
+                            By selecting <strong id="bestRouteGainText">{{ evaluation.best_route }}</strong>, the driver saves on average <strong id="avgTimeSavedFormattedDisplay">{{ evaluation.avg_time_saved_formatted }}</strong> compared to randomly picking a route.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Savings Breakdown Card -->
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm rounded-4 h-100" id="savingsCard">
+            <div class="card-header bg-white border-0 pt-4 px-4 pb-1">
+                <h5 class="fw-bold mb-1 text-dark">
+                    <i class="bi bi-hourglass-split text-primary me-2"></i>Time Saved vs Other Routes
+                </h5>
+                <p class="text-muted small mb-0">Time saved by choosing <span id="savingsBestRouteName">{{ evaluation.best_route }}</span> over each alternative:</p>
+            </div>
+            <div class="card-body px-4 pb-4 pt-2">
+                <div class="list-group list-group-flush" id="savingsList">
+                    {% for route in evaluation.routes %}
+                    {% if not route.is_best %}
+                    <div class="list-group-item px-0 py-3 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-bold text-dark fs-6">{{ route.route }}</span>
+                            <span class="badge bg-primary text-white fs-6 px-3 py-1 rounded-pill">
+                                Save {{ route.time_saved_formatted }}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted small">
+                            <span>Alternative takes: <strong>{{ route.duration_formatted }}</strong></span>
+                            <span class="text-success fw-semibold">{{ route.savings_percentage|round|int }}% faster</span>
+                        </div>
+                        <div class="progress mt-2" style="height: 6px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ 100 - route.savings_percentage }}%;"></div>
+                            <div class="progress-bar bg-danger opacity-75" role="progressbar" style="width: {{ route.savings_percentage }}%;"></div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+
+                <div class="mt-3 p-3 rounded-3 bg-light border text-muted small">
+                    <i class="bi bi-info-circle text-primary me-1"></i>
+                    <strong>Baseline Comparison:</strong> The worst route at this departure time is <strong id="baselineWorstRoute">{{ evaluation.worst_route }}</strong> taking <strong id="baselineWorstDuration">{{ evaluation.worst_duration_formatted }}</strong>.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- All 4 Routes Side-by-Side Comparison Table -->
+<div class="card border-0 shadow-sm rounded-4 mb-4" id="tableCard">
+    <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h5 class="fw-bold mb-1 text-dark"><i class="bi bi-table text-primary me-2"></i>Full Route Comparison Table</h5>
+                <p class="text-muted small mb-0">Direct comparison across all 4 routes for departure at <strong class="dep-time-display">{{ evaluation.departure_time }}</strong>.</p>
+            </div>
+            <a id="assignmentViewLink" href="/get_best_route?hour={{ evaluation.departure_hour }}&mins={{ evaluation.departure_minute }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-box-arrow-up-right me-1"></i> Original Assignment View
+            </a>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 route-table">
+                <thead class="table-light text-uppercase small">
+                    <tr>
+                        <th class="ps-4">Route</th>
+                        <th>Trip Duration</th>
+                        <th>Est. Arrival</th>
+                        <th>Time Saved vs Best</th>
+                    </tr>
+                </thead>
+                <tbody id="routeTableBody">
+                    {% for r in evaluation.routes %}
+                    <tr class="{% if r.is_best %}table-success-subtle fw-semibold{% endif %}">
+                        <td class="ps-4">
+                            <span class="route-badge {% if r.is_best %}best{% endif %}">{{ r.route }}</span>
+                            {% if r.is_best %}
+                            <span class="badge bg-success text-white ms-1">Recommended</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="fs-6 fw-bold {% if r.is_best %}text-success{% else %}text-dark{% endif %}">
+                                {{ r.duration_formatted }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="text-dark">{{ r.arrival_time }}</span>
+                        </td>
+                        <td>
+                            {% if r.is_best %}
+                            <span class="text-success fw-bold"><i class="bi bi-check2-all me-1"></i>0m (Fastest)</span>
+                            {% else %}
+                            <span class="text-danger fw-bold">+{{ r.time_saved_formatted }}</span>
+                            <span class="text-muted small d-block">({{ r.savings_percentage|round|int }}% slower)</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Interactive Bar Chart for Current Departure Time -->
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm rounded-4" id="chartCard">
+            <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+                <h5 class="fw-bold mb-1 text-dark"><i class="bi bi-bar-chart-fill text-primary me-2"></i>Duration Comparison at <span id="chartTimeDisplay">{{ evaluation.departure_time }}</span></h5>
+                <p class="text-muted small mb-0">Side-by-side trip duration for all 4 routes</p>
+            </div>
+            <div class="card-body px-4 pb-4">
+                <div class="chart-container" style="position: relative; height: 300px;">
+                    <canvas id="barChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Inject Data for Charts -->
+<script>
+    window.CURRENT_EVALUATION = {{ evaluation | tojson if evaluation else 'null' }};
+</script>
+
+{% endblock %}

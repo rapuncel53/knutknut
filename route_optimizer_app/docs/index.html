@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knut Knut Transport AS - Route Optimizer</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: #1e293b;
+            background-color: #f8fafc;
+        }
+        .bg-dark-slate { background-color: #0f172a; }
+        .brand-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #2563eb, #38bdf8);
+            color: #ffffff;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+        }
+        .brand-title {
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            font-size: 1.15rem;
+            line-height: 1.2;
+        }
+        .brand-subtitle {
+            font-size: 0.72rem;
+            color: #94a3b8;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+        .control-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+        }
+        .icon-circle {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .time-select, .time-input {
+            border: 2px solid #cbd5e1;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 1.35rem;
+            min-width: 90px;
+        }
+        .time-select:focus, .time-input:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.15);
+        }
+        .time-colon { line-height: 1; padding-top: 24px; }
+        .btn-calculate {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            border: none;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+        }
+        .btn-calculate:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+        }
+        .quick-pill {
+            background-color: #f1f5f9;
+            color: #475569;
+            text-decoration: none;
+            font-size: 0.8rem;
+            padding: 6px 12px;
+            border: 1px solid #e2e8f0;
+            transition: all 0.15s ease;
+            cursor: pointer;
+        }
+        .quick-pill:hover { background-color: #e2e8f0; color: #1e293b; }
+        .quick-pill.active {
+            background-color: #2563eb;
+            color: #ffffff;
+            border-color: #2563eb;
+            font-weight: 700;
+        }
+        .best-route-card {
+            background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 40%);
+            border: 2px solid #bbf7d0 !important;
+        }
+        .fw-extrabold { font-weight: 800; letter-spacing: -0.02em; }
+        .route-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            border-radius: 8px;
+            background-color: #f1f5f9;
+            color: #334155;
+            border: 1px solid #cbd5e1;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .route-badge.best {
+            background: linear-gradient(135deg, #15803d, #16a34a);
+            color: #ffffff;
+            border-color: #15803d;
+            box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);
+        }
+        .route-table thead th {
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            padding: 12px 16px;
+            background-color: #f8fafc;
+        }
+        .route-table tbody td {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .table-success-subtle { background-color: #f0fdf4 !important; }
+        .font-monospace { font-family: 'JetBrains Mono', monospace !important; }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .spin { display: inline-block; animation: spin 0.75s linear infinite; }
+
+        @keyframes optimizePulse {
+            0% { transform: scale(1); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06); }
+            35% { transform: scale(1.018); box-shadow: 0 0 0 10px rgba(34, 197, 94, 0.22), 0 12px 28px rgba(34, 197, 94, 0.25); }
+            100% { transform: scale(1); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06); }
+        }
+        .pulse-animated { animation: optimizePulse 0.65s cubic-bezier(0.25, 1, 0.5, 1); }
+
+        @keyframes numberPop {
+            0% { transform: scale(0.85); opacity: 0.2; }
+            60% { transform: scale(1.12); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .number-pop { display: inline-block; animation: numberPop 0.45s ease-out; }
+
+        @keyframes rowSweep {
+            0% { background-color: rgba(34, 197, 94, 0.35) !important; }
+            100% { background-color: transparent; }
+        }
+        .row-sweep { animation: rowSweep 0.8s ease-out; }
+
+        @keyframes badgePop {
+            0% { transform: scale(0.6); opacity: 0; }
+            70% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .badge-pop { animation: badgePop 0.4s ease-out forwards; }
+
+        .is-calculating {
+            opacity: 0.65;
+            filter: blur(0.6px);
+            transition: opacity 0.15s ease, filter 0.15s ease;
+        }
+        .card-calculating-flash {
+            position: relative;
+            overflow: hidden;
+        }
+        .card-calculating-flash::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 200%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent 0%, rgba(34, 197, 94, 0.12) 50%, transparent 100%);
+            animation: shimmerSweep 0.6s ease-in-out;
+            pointer-events: none;
+        }
+        @keyframes shimmerSweep {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark-slate shadow-sm sticky-top">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+                <div class="brand-icon">
+                    <i class="bi bi-truck-front-fill"></i>
+                </div>
+                <div>
+                    <span class="brand-title">Knut Knut Transport AS</span>
+                    <span class="brand-subtitle d-block">Route Duration Prediction & Optimizer</span>
+                </div>
+            </a>
+            <div class="navbar-text text-light small d-none d-md-block opacity-75">
+                <i class="bi bi-clock-history me-1"></i> Operating Hours: 07:00 &ndash; 17:00
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="py-4">
+        <div class="container">
+            <div id="errorAlert" class="alert alert-danger alert-dismissible fade show shadow-sm d-none align-items-center" role="alert">
+                <i class="bi bi-exclamation-triangle-fill fs-4 me-3 text-danger"></i>
+                <div id="errorMessageText"></div>
+                <button type="button" class="btn-close" onclick="document.getElementById('errorAlert').classList.add('d-none')"></button>
+            </div>
+
+            <!-- Control Card: Time Selection -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4 control-card">
+                <div class="card-body p-4">
+                    <div class="row align-items-center gy-3">
+                        <div class="col-lg-6">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="icon-circle bg-primary-subtle text-primary">
+                                    <i class="bi bi-clock fs-3"></i>
+                                </div>
+                                <div>
+                                    <h4 class="mb-1 fw-bold text-dark">Departure Time Planner</h4>
+                                    <p class="text-muted mb-0 small">Choose departure time between <strong>07:00</strong> and <strong>17:00</strong> to compute the optimal route.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-6">
+                            <form id="timeForm" class="row g-2 align-items-center justify-content-lg-end">
+                                <div class="col-auto">
+                                    <label for="hourSelect" class="form-label mb-0 text-muted small fw-semibold">Hour</label>
+                                    <select id="hourSelect" class="form-select form-select-lg fw-bold time-select" aria-label="Hour">
+                                        <option value="07">07</option>
+                                        <option value="08" selected>08</option>
+                                        <option value="09">09</option>
+                                        <option value="10">10</option>
+                                        <option value="11">11</option>
+                                        <option value="12">12</option>
+                                        <option value="13">13</option>
+                                        <option value="14">14</option>
+                                        <option value="15">15</option>
+                                        <option value="16">16</option>
+                                        <option value="17">17</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-auto">
+                                    <span class="fs-4 fw-bold text-muted time-colon">:</span>
+                                </div>
+
+                                <div class="col-auto">
+                                    <label for="minsInput" class="form-label mb-0 text-muted small fw-semibold">Minute</label>
+                                    <input type="number" id="minsInput" class="form-control form-control-lg fw-bold time-input" min="0" max="59" value="00" required>
+                                </div>
+
+                                <div class="col-auto align-self-end">
+                                    <button type="submit" id="optimizeBtn" class="btn btn-primary btn-lg fw-semibold px-4 shadow-sm btn-calculate">
+                                        <i class="bi bi-lightning-charge-fill me-1" id="btnIcon"></i> <span id="btnText">Optimize</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Quick selection pills -->
+                    <div class="mt-3 pt-3 border-top d-flex flex-wrap align-items-center gap-2">
+                        <span class="text-muted small fw-medium me-1"><i class="bi bi-pin-angle-fill me-1"></i>Quick Departure Times:</span>
+                        <span class="badge rounded-pill quick-pill" data-hour="07" data-mins="00">07:00</span>
+                        <span class="badge rounded-pill quick-pill" data-hour="07" data-mins="15">07:15</span>
+                        <span class="badge rounded-pill quick-pill active" data-hour="08" data-mins="00">08:00</span>
+                        <span class="badge rounded-pill quick-pill" data-hour="09" data-mins="30">09:30</span>
+                        <span class="badge rounded-pill quick-pill" data-hour="10" data-mins="00">10:00</span>
+                        <span class="badge rounded-pill quick-pill" data-hour="12" data-mins="00">12:00</span>
+                        <span class="badge rounded-pill quick-pill" data-hour="13" data-mins="30">13:30</span>
+                        <span class="badge rounded-pill quick-pill" data-hour="15" data-mins="00">15:00</span>
+                        <span class="badge rounded-pill quick-pill" data-hour="16" data-mins="15">16:15</span>
+                        <span class="badge rounded-pill quick-pill" data-hour="17" data-mins="00">17:00</span>
+                        <span id="recalcNotice" class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill small ms-auto d-none">
+                            <i class="bi bi-check2-circle me-1"></i> Calculation updated!
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Prediction Results -->
+            <div class="row g-4 mb-4" id="resultsContainer">
+                <!-- Highlight: Recommended Best Route -->
+                <div class="col-lg-7">
+                    <div class="card border-0 shadow-sm rounded-4 h-100 best-route-card" id="bestRouteCard">
+                        <div class="card-body p-4 d-flex flex-column justify-content-between">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle px-3 py-2 rounded-pill fs-6 fw-bold">
+                                        <i class="bi bi-check-circle-fill me-1"></i> OPTIMAL ROUTE IDENTIFIED
+                                    </span>
+                                    <span class="text-muted small">
+                                        Departure: <strong class="dep-time-display">08:00</strong>
+                                    </span>
+                                </div>
+
+                                <div class="d-flex align-items-baseline gap-3 mb-2">
+                                    <h1 class="display-5 fw-extrabold text-success mb-0" id="bestRouteDisplay">B->C->E</h1>
+                                    <span class="badge bg-light text-dark border px-2 py-1 fs-6">Fastest Option</span>
+                                </div>
+
+                                <p class="text-secondary mb-4">
+                                    For departure at <strong class="dep-time-display">08:00</strong>, traveling via route <strong id="bestRouteText">B->C->E</strong> minimizes transit delay.
+                                </p>
+                            </div>
+
+                            <div class="row g-3 py-3 px-2 rounded-3 bg-white border">
+                                <div class="col-sm-4 text-center border-end">
+                                    <div class="text-muted small fw-semibold text-uppercase">Duration</div>
+                                    <div class="fs-4 fw-bold text-dark mt-1" id="bestDurationFormattedDisplay">1h 29m</div>
+                                    <div class="text-success small fw-medium">Travel time</div>
+                                </div>
+                                <div class="col-sm-4 text-center border-end">
+                                    <div class="text-muted small fw-semibold text-uppercase">Est. Arrival</div>
+                                    <div class="fs-4 fw-bold text-dark mt-1" id="bestArrivalDisplay">09:29</div>
+                                    <div class="text-muted small">Same day</div>
+                                </div>
+                                <div class="col-sm-4 text-center">
+                                    <div class="text-muted small fw-semibold text-uppercase">Max Time Saved</div>
+                                    <div class="fs-4 fw-bold text-primary mt-1">+<span id="maxTimeSavedDisplay">31m</span></div>
+                                    <div class="text-primary small fw-medium">vs <span id="worstRouteDisplay">A->C->D</span></div>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 p-3 rounded-3 bg-success-subtle border border-success-subtle d-flex align-items-center gap-3">
+                                <i class="bi bi-shield-check text-success fs-3"></i>
+                                <div>
+                                    <div class="fw-bold text-success-emphasis">Average Gain vs Historical Random Choice:</div>
+                                    <div class="text-success small">
+                                        By selecting <strong id="bestRouteGainText">B->C->E</strong>, the driver saves on average <strong id="avgTimeSavedFormattedDisplay">16m</strong> compared to randomly picking a route.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Savings Breakdown Card -->
+                <div class="col-lg-5">
+                    <div class="card border-0 shadow-sm rounded-4 h-100" id="savingsCard">
+                        <div class="card-header bg-white border-0 pt-4 px-4 pb-1">
+                            <h5 class="fw-bold mb-1 text-dark">
+                                <i class="bi bi-hourglass-split text-primary me-2"></i>Time Saved vs Other Routes
+                            </h5>
+                            <p class="text-muted small mb-0">Time saved by choosing <span id="savingsBestRouteName">B->C->E</span> over each alternative:</p>
+                        </div>
+                        <div class="card-body px-4 pb-4 pt-2">
+                            <div class="list-group list-group-flush" id="savingsList"></div>
+
+                            <div class="mt-3 p-3 rounded-3 bg-light border text-muted small">
+                                <i class="bi bi-info-circle text-primary me-1"></i>
+                                <strong>Baseline Comparison:</strong> The worst route at this departure time is <strong id="baselineWorstRoute">A->C->D</strong> taking <strong id="baselineWorstDuration">2h 00m</strong>.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- All 4 Routes Side-by-Side Comparison Table -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4" id="tableCard">
+                <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+                    <h5 class="fw-bold mb-1 text-dark"><i class="bi bi-table text-primary me-2"></i>Full Route Comparison Table</h5>
+                    <p class="text-muted small mb-0">Direct comparison across all 4 routes for departure at <strong class="dep-time-display">08:00</strong>.</p>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 route-table">
+                            <thead class="table-light text-uppercase small">
+                                <tr>
+                                    <th class="ps-4">Route</th>
+                                    <th>Trip Duration</th>
+                                    <th>Est. Arrival</th>
+                                    <th>Time Saved vs Best</th>
+                                </tr>
+                            </thead>
+                            <tbody id="routeTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Bar Chart for Current Departure Time -->
+            <div class="row g-4 mb-4">
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm rounded-4" id="chartCard">
+                        <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+                            <h5 class="fw-bold mb-1 text-dark"><i class="bi bi-bar-chart-fill text-primary me-2"></i>Duration Comparison at <span id="chartTimeDisplay">08:00</span></h5>
+                            <p class="text-muted small mb-0">Side-by-side trip duration for all 4 routes</p>
+                        </div>
+                        <div class="card-body px-4 pb-4">
+                            <div class="chart-container" style="position: relative; height: 300px;">
+                                <canvas id="barChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer mt-auto py-3 bg-white border-top text-center text-muted small">
+        <div class="container">
+            <span>Knut Knut Transport AS &copy; Model Optimization &amp; Travel Time Analytics</span>
+        </div>
+    </footer>
+
+    <!-- Client-Side Models, Math & UI Script -->
+    <script>
+        // --- MATHEMATICAL EQUATIONS IN JAVASCRIPT ---
+        const BCD_INTERVALS = [
+            { low: 7.00, high: 7.25, slope: -36.30, intercept: 367.10 },
+            { low: 7.25, high: 8.25, slope: -67.64, intercept: 651.50 },
+            { low: 8.25, high: 9.25, slope: -80.06, intercept: 811.65 },
+            { low: 9.25, high: 10.25, slope: -79.88, intercept: 872.11 },
+            { low: 10.25, high: 11.25, slope: -60.12, intercept: 728.30 },
+            { low: 11.25, high: 12.25, slope: -59.07, intercept: 776.71 },
+            { low: 12.25, high: 13.25, slope: -63.92, intercept: 897.85 },
+            { low: 13.25, high: 14.25, slope: -47.59, intercept: 738.65 },
+            { low: 14.25, high: 15.25, slope: -34.79, intercept: 614.78 },
+            { low: 15.25, high: 16.25, slope: -43.84, intercept: 812.27 },
+            { low: 16.25, high: 17.25, slope: -63.60, intercept: 1194.87 }
+        ];
+
+        const BCE_INTERVALS = [
+            { low: 7.00, high: 7.25, slope: -64.84, intercept: 543.20 },
+            { low: 7.25, high: 8.25, slope: -57.99, intercept: 552.48 },
+            { low: 8.25, high: 9.25, slope: -60.24, intercept: 630.26 },
+            { low: 9.25, high: 10.25, slope: -59.41, intercept: 682.54 },
+            { low: 10.25, high: 11.25, slope: -58.36, intercept: 731.04 },
+            { low: 11.25, high: 12.25, slope: -63.81, intercept: 852.59 },
+            { low: 12.25, high: 13.25, slope: -60.75, intercept: 876.87 },
+            { low: 13.25, high: 14.25, slope: -59.25, intercept: 916.35 },
+            { low: 14.25, high: 15.25, slope: -57.37, intercept: 949.71 },
+            { low: 15.25, high: 16.25, slope: -58.66, intercept: 1027.28 },
+            { low: 16.25, high: 17.25, slope: -58.89, intercept: 1090.40 }
+        ];
+
+        function predictBCD(t) {
+            for (const item of BCD_INTERVALS) {
+                if (t >= item.low && t <= item.high) {
+                    return item.slope * t + item.intercept;
+                }
+            }
+            if (t < 7.0) return BCD_INTERVALS[0].slope * t + BCD_INTERVALS[0].intercept;
+            return BCD_INTERVALS[BCD_INTERVALS.length - 1].slope * t + BCD_INTERVALS[BCD_INTERVALS.length - 1].intercept;
+        }
+
+        function predictBCE(t) {
+            for (const item of BCE_INTERVALS) {
+                if (t >= item.low && t <= item.high) {
+                    return item.slope * t + item.intercept;
+                }
+            }
+            if (t < 7.0) return BCE_INTERVALS[0].slope * t + BCE_INTERVALS[0].intercept;
+            return BCE_INTERVALS[BCE_INTERVALS.length - 1].slope * t + BCE_INTERVALS[BCE_INTERVALS.length - 1].intercept;
+        }
+
+        function predictACD(x) {
+            const base = 141.208171028210;
+            const slope = -1.857763594676;
+            const z1 = -(2.038913183625) * (x - 8.861364625860);
+            const z2 = -(1.672620676169) * (x - 14.980186722198);
+            const sig1 = 1.0 / (1.0 + Math.exp(Math.max(Math.min(z1, 700.0), -700.0)));
+            const sig2 = 1.0 / (1.0 + Math.exp(Math.max(Math.min(z2, 700.0), -700.0)));
+            return base + (slope * x) + (-44.149088388722 * sig1) + (63.050602349853 * sig2);
+        }
+
+        function predictACE() {
+            return 98.0;
+        }
+
+        function formatHoursMins(minutes) {
+            const totalMins = Math.round(minutes);
+            const hrs = Math.floor(totalMins / 60);
+            const mins = totalMins % 60;
+            if (hrs > 0) {
+                return `${hrs}h ${mins < 10 ? '0' + mins : mins}m`;
+            }
+            return `${mins}m`;
+        }
+
+        function evaluateAllRoutes(hour, minute) {
+            const timeDecimal = hour + (minute / 60.0);
+            if (timeDecimal < 7.0 || timeDecimal > 17.0) {
+                throw new Error(`Departure time ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} is outside allowed operating hours (07:00 to 17:00).`);
+            }
+
+            const rawRoutes = [
+                { route: "A->C->D", duration: predictACD(timeDecimal) },
+                { route: "A->C->E", duration: predictACE() },
+                { route: "B->C->D", duration: predictBCD(timeDecimal) },
+                { route: "B->C->E", duration: predictBCE(timeDecimal) }
+            ];
+
+            const bestItem = rawRoutes.reduce((min, r) => r.duration < min.duration ? r : min, rawRoutes[0]);
+            const worstItem = rawRoutes.reduce((max, r) => r.duration > max.duration ? r : max, rawRoutes[0]);
+            const avgDuration = rawRoutes.reduce((sum, r) => sum + r.duration, 0) / rawRoutes.length;
+
+            const depTotalMinutes = hour * 60 + minute;
+            const arrTotalMinutes = depTotalMinutes + Math.round(bestItem.duration);
+            const arrH = Math.floor(arrTotalMinutes / 60) % 24;
+            const arrM = arrTotalMinutes % 60;
+            const bestArrivalStr = `${arrH.toString().padStart(2, '0')}:${arrM.toString().padStart(2, '0')}`;
+
+            const sorted = [...rawRoutes].sort((a, b) => a.duration - b.duration);
+            const evaluated = sorted.map(r => {
+                const diff = r.duration - bestItem.duration;
+                const pct = r.duration > 0 ? (diff / r.duration * 100) : 0;
+                const rArrTot = depTotalMinutes + Math.round(r.duration);
+                const rArrH = Math.floor(rArrTot / 60) % 24;
+                const rArrM = rArrTot % 60;
+                return {
+                    route: r.route,
+                    duration_min: r.duration,
+                    duration_formatted: formatHoursMins(r.duration),
+                    arrival_time: `${rArrH.toString().padStart(2, '0')}:${rArrM.toString().padStart(2, '0')}`,
+                    time_saved_formatted: diff > 0 ? formatHoursMins(diff) : "0m (Fastest)",
+                    savings_percentage: pct,
+                    is_best: r.route === bestItem.route
+                };
+            });
+
+            return {
+                departure_time: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
+                best_route: bestItem.route,
+                best_duration_formatted: formatHoursMins(bestItem.duration),
+                best_arrival_time: bestArrivalStr,
+                worst_route: worstItem.route,
+                worst_duration_formatted: formatHoursMins(worstItem.duration),
+                max_time_saved_formatted: formatHoursMins(worstItem.duration - bestItem.duration),
+                avg_time_saved_formatted: formatHoursMins(avgDuration - bestItem.duration),
+                routes: evaluated
+            };
+        }
+
+        // --- UI & CHART LOGIC ---
+        let barChart = null;
+
+        function updateChart(data) {
+            const ctx = document.getElementById('barChart');
+            const routeOrder = ["A->C->D", "A->C->E", "B->C->D", "B->C->E"];
+            const routeMap = {};
+            data.routes.forEach(r => { routeMap[r.route] = r; });
+
+            const durations = routeOrder.map(r => routeMap[r] ? Math.round(routeMap[r].duration_min) : 0);
+            const bgColors = routeOrder.map(r => r === data.best_route ? 'rgba(22, 163, 74, 0.85)' : 'rgba(148, 163, 184, 0.7)');
+            const borderColors = routeOrder.map(r => r === data.best_route ? '#15803d' : '#64748b');
+
+            if (barChart) {
+                barChart.data.datasets[0].data = durations;
+                barChart.data.datasets[0].backgroundColor = bgColors;
+                barChart.data.datasets[0].borderColor = borderColors;
+                barChart.update();
+                return;
+            }
+
+            barChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: routeOrder,
+                    datasets: [{
+                        data: durations,
+                        backgroundColor: bgColors,
+                        borderColor: borderColors,
+                        borderWidth: 1.5,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 600, easing: 'easeOutQuart' },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    const r = routeMap[ctx.label];
+                                    let txt = `Duration: ${r ? r.duration_formatted : formatHoursMins(ctx.parsed.y)}`;
+                                    if (r && !r.is_best) txt += ` (+${r.time_saved_formatted} vs best)`;
+                                    else if (r && r.is_best) txt += ` (Optimal route)`;
+                                    return txt;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 40,
+                            title: { display: true, text: 'Trip Duration (hours & minutes)', font: { weight: '600', size: 12 } },
+                            ticks: { callback: v => formatHoursMins(v), font: { size: 11 } },
+                            grid: { color: 'rgba(226, 232, 240, 0.7)' }
+                        },
+                        x: { grid: { display: false }, ticks: { font: { weight: '700', size: 13 } } }
+                    }
+                }
+            });
+        }
+
+        function renderResults(data) {
+            document.querySelectorAll('.dep-time-display').forEach(el => el.textContent = data.departure_time);
+            document.getElementById('bestRouteDisplay').textContent = data.best_route;
+            document.getElementById('bestRouteText').textContent = data.best_route;
+            document.getElementById('bestRouteGainText').textContent = data.best_route;
+            document.getElementById('bestDurationFormattedDisplay').textContent = data.best_duration_formatted;
+            document.getElementById('bestArrivalDisplay').textContent = data.best_arrival_time;
+            document.getElementById('maxTimeSavedDisplay').textContent = data.max_time_saved_formatted;
+            document.getElementById('worstRouteDisplay').textContent = data.worst_route;
+            document.getElementById('avgTimeSavedFormattedDisplay').textContent = data.avg_time_saved_formatted;
+            document.getElementById('savingsBestRouteName').textContent = data.best_route;
+            document.getElementById('baselineWorstRoute').textContent = data.worst_route;
+            document.getElementById('baselineWorstDuration').textContent = data.worst_duration_formatted;
+            document.getElementById('chartTimeDisplay').textContent = data.departure_time;
+
+            // Savings list
+            const savingsList = document.getElementById('savingsList');
+            let sHtml = '';
+            data.routes.forEach(route => {
+                if (!route.is_best) {
+                    sHtml += `
+                    <div class="list-group-item px-0 py-3 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-bold text-dark fs-6">${route.route}</span>
+                            <span class="badge bg-primary text-white fs-6 px-3 py-1 rounded-pill">
+                                Save ${route.time_saved_formatted}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted small">
+                            <span>Alternative takes: <strong>${route.duration_formatted}</strong></span>
+                            <span class="text-success fw-semibold">${Math.round(route.savings_percentage)}% faster</span>
+                        </div>
+                        <div class="progress mt-2" style="height: 6px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: ${100 - route.savings_percentage}%;"></div>
+                            <div class="progress-bar bg-danger opacity-75" role="progressbar" style="width: ${route.savings_percentage}%;"></div>
+                        </div>
+                    </div>`;
+                }
+            });
+            savingsList.innerHTML = sHtml;
+
+            // Table
+            const tableBody = document.getElementById('routeTableBody');
+            let tHtml = '';
+            data.routes.forEach(r => {
+                const trClass = r.is_best ? 'table-success-subtle fw-semibold row-sweep' : 'row-sweep';
+                const routeBadge = r.is_best ? `<span class="route-badge best">${r.route}</span> <span class="badge bg-success text-white ms-1">Recommended</span>` : `<span class="route-badge">${r.route}</span>`;
+                const savedDisplay = r.is_best 
+                    ? '<span class="text-success fw-bold"><i class="bi bi-check2-all me-1"></i>0m (Fastest)</span>'
+                    : `<span class="text-danger fw-bold">+${r.time_saved_formatted}</span><span class="text-muted small d-block">(${Math.round(r.savings_percentage)}% slower)</span>`;
+
+                tHtml += `
+                <tr class="${trClass}">
+                    <td class="ps-4">${routeBadge}</td>
+                    <td><span class="fs-6 fw-bold ${r.is_best ? 'text-success' : 'text-dark'}">${r.duration_formatted}</span></td>
+                    <td><span class="text-dark">${r.arrival_time}</span></td>
+                    <td>${savedDisplay}</td>
+                </tr>`;
+            });
+            tableBody.innerHTML = tHtml;
+
+            updateChart(data);
+        }
+
+        function triggerAnimations() {
+            const bestCard = document.getElementById('bestRouteCard');
+            bestCard.classList.remove('pulse-animated', 'card-calculating-flash');
+            void bestCard.offsetWidth;
+            bestCard.classList.add('pulse-animated', 'card-calculating-flash');
+
+            ['bestRouteDisplay', 'bestDurationFormattedDisplay', 'bestArrivalDisplay', 'maxTimeSavedDisplay'].forEach(id => {
+                const el = document.getElementById(id);
+                el.classList.remove('number-pop');
+                void el.offsetWidth;
+                el.classList.add('number-pop');
+            });
+        }
+
+        async function optimize(h, m) {
+            const alertBox = document.getElementById('errorAlert');
+            const alertText = document.getElementById('errorMessageText');
+            alertBox.classList.add('d-none');
+
+            const btn = document.getElementById('optimizeBtn');
+            const btnIcon = document.getElementById('btnIcon');
+            const btnText = document.getElementById('btnText');
+            btn.disabled = true;
+            btnIcon.className = 'bi bi-arrow-repeat spin me-1';
+            btnText.textContent = 'Calculating...';
+
+            ['bestRouteCard', 'savingsCard', 'tableCard', 'chartCard'].forEach(id => {
+                document.getElementById(id).classList.add('is-calculating');
+            });
+
+            await new Promise(r => setTimeout(r, 280));
+
+            try {
+                const data = evaluateAllRoutes(parseInt(h, 10), parseInt(m, 10));
+                renderResults(data);
+                triggerAnimations();
+
+                const notice = document.getElementById('recalcNotice');
+                notice.classList.remove('d-none', 'badge-pop');
+                void notice.offsetWidth;
+                notice.classList.add('badge-pop');
+                setTimeout(() => notice.classList.add('d-none'), 2800);
+
+                btnIcon.className = 'bi bi-check2-circle me-1';
+                btnText.textContent = 'Optimized!';
+                setTimeout(() => {
+                    btnIcon.className = 'bi bi-lightning-charge-fill me-1';
+                    btnText.textContent = 'Optimize';
+                    btn.disabled = false;
+                }, 600);
+            } catch (err) {
+                alertText.textContent = err.message;
+                alertBox.classList.remove('d-none');
+                btnIcon.className = 'bi bi-lightning-charge-fill me-1';
+                btnText.textContent = 'Optimize';
+                btn.disabled = false;
+            } finally {
+                ['bestRouteCard', 'savingsCard', 'tableCard', 'chartCard'].forEach(id => {
+                    document.getElementById(id).classList.remove('is-calculating');
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const initial = evaluateAllRoutes(8, 0);
+            renderResults(initial);
+
+            document.getElementById('timeForm').addEventListener('submit', e => {
+                e.preventDefault();
+                const h = document.getElementById('hourSelect').value;
+                let m = document.getElementById('minsInput').value || '00';
+                m = Math.max(0, Math.min(59, parseInt(m, 10) || 0)).toString().padStart(2, '0');
+                document.getElementById('minsInput').value = m;
+                optimize(h, m);
+            });
+
+            document.querySelectorAll('.quick-pill').forEach(pill => {
+                pill.addEventListener('click', function() {
+                    const h = this.getAttribute('data-hour');
+                    const m = this.getAttribute('data-mins');
+                    document.getElementById('hourSelect').value = h;
+                    document.getElementById('minsInput').value = m;
+                    document.querySelectorAll('.quick-pill').forEach(p => p.classList.remove('active'));
+                    this.classList.add('active');
+                    optimize(h, m);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
